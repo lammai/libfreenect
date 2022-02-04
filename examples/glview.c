@@ -36,11 +36,16 @@
 #endif
 #include <pthread.h>
 
+/*
 #if defined(__APPLE__)
 #include <GLUT/glut.h>
 #else
-#include <GL/glut.h>
+#include <gl/glut.h>
 #endif
+*/
+#include <GL/glut.h>
+#include <GL/gl.h>
+#include <GL/glu.h>
 
 #define _USE_MATH_DEFINES
 #include <math.h>
@@ -143,12 +148,13 @@ void DrawGLScene()
 	glTranslatef((640.0/2.0),(480.0/2.0) ,0.0);
 	glRotatef(camera_angle, 0.0, 0.0, 1.0);
 	glTranslatef(-(640.0/2.0),-(480.0/2.0) ,0.0);
+
 	glBegin(GL_TRIANGLE_FAN);
 	glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-	glTexCoord2f(0, 1); glVertex3f(0,0,1.0);
-	glTexCoord2f(1, 1); glVertex3f(640,0,1.0);
-	glTexCoord2f(1, 0); glVertex3f(640,480,1.0);
-	glTexCoord2f(0, 0); glVertex3f(0,480,1.0);
+        glTexCoord2f(0, 0); glVertex3f(0,0,0);
+        glTexCoord2f(1, 0); glVertex3f(512,0,0);
+        glTexCoord2f(1, 1); glVertex3f(512,512,0);
+        glTexCoord2f(0, 1); glVertex3f(0,512,0);
 	glEnd();
 	glPopMatrix();
 
@@ -294,7 +300,7 @@ void ReSizeGLScene(int Width, int Height)
 	glViewport(0,0,Width,Height);
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
-	glOrtho (0, 1280, 0, 480, -5.0f, 5.0f);
+	glOrtho (0, 1280, 512, 0, -1.0f, 1.0f);
 	glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
 
@@ -303,9 +309,9 @@ void ReSizeGLScene(int Width, int Height)
 void InitGL(int Width, int Height)
 {
 	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-	//glClearDepth(0.0);
-	//glDepthFunc(GL_LESS);
-	//glDepthMask(GL_FALSE);
+	glClearDepth(1.0);
+	glDepthFunc(GL_LESS);
+	glDepthMask(GL_FALSE);
 	glDisable(GL_DEPTH_TEST);
 	glDisable(GL_BLEND);
 	glDisable(GL_ALPHA_TEST);
@@ -333,7 +339,7 @@ void *gl_threadfunc(void *arg)
 	glutInit(&g_argc, g_argv);
 
 	glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_ALPHA | GLUT_DEPTH);
-	glutInitWindowSize(1280, 480);
+	glutInitWindowSize(1280, 512);
 	glutInitWindowPosition(0, 0);
 
 	window = glutCreateWindow("LibFreenect");
@@ -343,7 +349,7 @@ void *gl_threadfunc(void *arg)
 	glutReshapeFunc(&ReSizeGLScene);
 	glutKeyboardFunc(&keyPressed);
 
-	InitGL(1280, 480);
+	InitGL(1280, 512);
 
 	glutMainLoop();
 
@@ -358,40 +364,41 @@ void depth_cb(freenect_device *dev, void *v_depth, uint32_t timestamp)
 	uint16_t *depth = (uint16_t*)v_depth;
 
 	pthread_mutex_lock(&gl_backbuf_mutex);
+
 	for (i=0; i<640*480; i++) {
 		int pval = t_gamma[depth[i]];
 		int lb = pval & 0xff;
 		switch (pval>>8) {
 			case 0:
-				depth_mid[3*i+0] = 255;
-				depth_mid[3*i+1] = 255-lb;
-				depth_mid[3*i+2] = 255-lb;
-				break;
-			case 1:
-				depth_mid[3*i+0] = 255;
-				depth_mid[3*i+1] = lb;
-				depth_mid[3*i+2] = 0;
-				break;
-			case 2:
 				depth_mid[3*i+0] = 255-lb;
 				depth_mid[3*i+1] = 255;
-				depth_mid[3*i+2] = 0;
+				depth_mid[3*i+2] = 255;
 				break;
-			case 3:
-				depth_mid[3*i+0] = 0;
-				depth_mid[3*i+1] = 255;
-				depth_mid[3*i+2] = lb;
-				break;
-			case 4:
+			case 1:
 				depth_mid[3*i+0] = 0;
 				depth_mid[3*i+1] = 255-lb;
 				depth_mid[3*i+2] = 255;
 				break;
-			case 5:
+			case 2:
 				depth_mid[3*i+0] = 0;
 				depth_mid[3*i+1] = 0;
 				depth_mid[3*i+2] = 255-lb;
 				break;
+//			case 3:
+//				depth_mid[3*i+0] = 0;
+//				depth_mid[3*i+1] = 255;
+//				depth_mid[3*i+2] = lb;
+//				break;
+//			case 4:
+//				depth_mid[3*i+0] = 0;
+//				depth_mid[3*i+1] = 255-lb;
+//				depth_mid[3*i+2] = 255;
+//				break;
+//			case 5:
+//				depth_mid[3*i+0] = 0;
+//				depth_mid[3*i+1] = 0;
+//				depth_mid[3*i+2] = 255-lb;
+//				break;
 			default:
 				depth_mid[3*i+0] = 0;
 				depth_mid[3*i+1] = 0;
